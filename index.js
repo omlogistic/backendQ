@@ -10,6 +10,7 @@ const pool = require("./config/db"); // PostgreSQL connection
 
 const router = require("./routes/vendorRoutes");
 const uresRouter = require("./routes/userRoutes");
+const serviceRouter = require("./routes/serviceRoutes");
 
 // Initialize Express app
 const app = express();
@@ -28,6 +29,10 @@ app.use(
 // API Routes
 app.use("/api/vendors", router);
 app.use("/api/users", uresRouter);
+
+//Api for Add vendor services
+
+app.use("/api",serviceRouter);
 
 // Start the server
 app.listen(port, () => {
