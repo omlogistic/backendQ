@@ -27,7 +27,8 @@ app.use(
 );
 
 // API Routes
-app.use("/api/vendors", router);
+// app.use("/api/vendors", router);
+app.use("/api", router);
 app.use("/api/users", uresRouter);
 
 //Api for Add vendor services
