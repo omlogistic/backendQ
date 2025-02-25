@@ -29,7 +29,7 @@
 
 
 const express = require("express");
-const { registerVendor, getAllVendors, approveVendor, rejectVendor, updateVendorDetails } = require("../controllers/vendorController");
+const { registerVendor, getAllVendors, approveVendor, rejectVendor, updateVendorDetails, getVendorById } = require("../controllers/vendorController");
 
 
 const router = express.Router();
@@ -53,6 +53,6 @@ router.post("/admin/reject-vendor/:vendorId", rejectVendor);
 router.put("/admin/update-vendor/:vendorId", updateVendorDetails);
 
 // Get Single Vendor by ID
-// router.get("/:id", getVendorById);
+router.get('/vendors/:id', getVendorById);
 
 module.exports = router;

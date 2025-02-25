@@ -168,6 +168,22 @@ const getAllVendors = async (req, res) => {
   }
 };
 
+const getVendorById = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query("SELECT * FROM vendors WHERE id = $1", [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Vendor not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("Error fetching vendor by ID:", err);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
 const approveVendor = async (req, res) => {
   const { vendorId } = req.params;
   try {
@@ -317,5 +333,5 @@ const updateVendorDetails = async (req, res) => {
 
 
 
-module.exports = { registerVendor, getAllVendors,approveVendor,rejectVendor, updateVendorDetails};
+module.exports = { registerVendor,getVendorById , getAllVendors,approveVendor,rejectVendor, updateVendorDetails};
 
