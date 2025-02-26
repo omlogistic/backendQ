@@ -180,6 +180,50 @@ const updateVendorDetails = async (req, res) => {
   }
 };
 
+// const loginVendor = async (req, res) => {
+//   try {
+//     const { email, password } = req.body;
+
+//     // Check if email and password are provided
+//     if (!email || !password) {
+//       return res.status(400).json({ message: "Email and password are required." });
+//     }
+
+//     // Check if the vendor exists
+//     const result = await pool.query(
+//       `SELECT * FROM vendors WHERE email = $1`,
+//       [email]
+//     );
+
+//     if (result.rows.length === 0) {
+//       return res.status(404).json({ message: "Vendor not found." });
+//     }
+
+//     const vendor = result.rows[0];
+
+//     // Check password
+//     const isMatch = await bcrypt.compare(password, vendor.password);
+//     if (!isMatch) {
+//       return res.status(401).json({ message: "Invalid credentials." });
+//     }
+
+//     // Check if vendor is approved
+//     if (vendor.status !== 'approved') {
+//       return res.status(403).json({ message: "Account is not approved by admin." });
+//     }
+
+//     // Return vendor information (excluding the password)
+//     const { password: _, ...vendorData } = vendor;
+//     res.status(200).json({
+//       message: "Login successful.",
+//       vendor: vendorData,
+//     });
+//   } catch (error) {
+//     console.error("Error logging in vendor:", error);
+//     res.status(500).json({ message: "Server error", error: error.message });
+//   }
+// };
+
 const loginVendor = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -191,7 +235,7 @@ const loginVendor = async (req, res) => {
 
     // Check if the vendor exists
     const result = await pool.query(
-      `SELECT * FROM vendors WHERE email = $1`,
+      `SELECT id, name, enterprise_name, email, password, status FROM vendors WHERE email = $1`,
       [email]
     );
 
@@ -212,17 +256,25 @@ const loginVendor = async (req, res) => {
       return res.status(403).json({ message: "Account is not approved by admin." });
     }
 
-    // Return vendor information (excluding the password)
-    const { password: _, ...vendorData } = vendor;
+    // Construct the response data
+    const vendorData = {
+      id: vendor.id,
+      name: vendor.name,
+      enterprise_name: vendor.enterprise_name,
+      email: vendor.email,
+      status: vendor.status
+    };
+
     res.status(200).json({
       message: "Login successful.",
-      vendor: vendorData,
+      vendor: vendorData
     });
   } catch (error) {
     console.error("Error logging in vendor:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 
 
