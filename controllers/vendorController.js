@@ -118,67 +118,67 @@ const rejectVendor = async (req, res) => {
 
 
 
-const updateVendorDetails = async (req, res) => {
-  const { vendorId } = req.params;
-  const {
-    name,
-    contact_number,
-    state,
-    city,
-    pincode,
-    full_address,
-    service_type,
-    years_of_experience,
-    personal_intro,
-    exterior_image,
-    interior_image,
-    status
-  } = req.body;
+// const updateVendorDetails = async (req, res) => {
+//   const { vendorId } = req.params;
+//   const {
+//     name,
+//     contact_number,
+//     state,
+//     city,
+//     pincode,
+//     full_address,
+//     service_type,
+//     years_of_experience,
+//     personal_intro,
+//     exterior_image,
+//     interior_image,
+//     status
+//   } = req.body;
 
-  try {
-    const result = await pool.query(
-      `UPDATE vendors SET 
-        name = $1, 
-        contact_number = $2, 
-        state = $3, 
-        city = $4, 
-        pincode = $5, 
-        full_address = $6, 
-        service_type = $7, 
-        years_of_experience = $8, 
-        personal_intro = $9, 
-        exterior_image = $10,
-        interior_image = $11,
-        status = $12
-      WHERE id = $13 
-      RETURNING *`,
-      [
-        name,
-        contact_number,
-        state,
-        city,
-        pincode,
-        full_address,
-        service_type,
-        years_of_experience,
-        personal_intro,
-        exterior_image,
-        interior_image,
-        status,
-        vendorId,
-      ]
-    );
+//   try {
+//     const result = await pool.query(
+//       `UPDATE vendors SET 
+//         name = $1, 
+//         contact_number = $2, 
+//         state = $3, 
+//         city = $4, 
+//         pincode = $5, 
+//         full_address = $6, 
+//         service_type = $7, 
+//         years_of_experience = $8, 
+//         personal_intro = $9, 
+//         exterior_image = $10,
+//         interior_image = $11,
+//         status = $12
+//       WHERE id = $13 
+//       RETURNING *`,
+//       [
+//         name,
+//         contact_number,
+//         state,
+//         city,
+//         pincode,
+//         full_address,
+//         service_type,
+//         years_of_experience,
+//         personal_intro,
+//         exterior_image,
+//         interior_image,
+//         status,
+//         vendorId,
+//       ]
+//     );
 
-    if (result.rowCount === 0) {
-      return res.status(404).json({ message: "Vendor not found" });
-    }
+//     if (result.rowCount === 0) {
+//       return res.status(404).json({ message: "Vendor not found" });
+//     }
 
-    res.json({ message: "Vendor details updated successfully", vendor: result.rows[0] });
-  } catch (err) {
-    console.error("Error updating vendor details by admin:", err);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-};
+//     res.json({ message: "Vendor details updated successfully", vendor: result.rows[0] });
+//   } catch (err) {
+//     console.error("Error updating vendor details by admin:", err);
+//     res.status(500).json({ message: "Internal Server Error" });
+//   }
+// };
 
 // const loginVendor = async (req, res) => {
 //   try {
@@ -223,6 +223,65 @@ const updateVendorDetails = async (req, res) => {
 //     res.status(500).json({ message: "Server error", error: error.message });
 //   }
 // };
+
+const updateVendorDetails = async (req, res) => {
+  const { vendorId } = req.params;
+  const {
+    name,
+    contact_number,
+    state,
+    city,
+    pincode,
+    full_address,
+    service_type,
+    years_of_experience,
+    personal_intro,
+    exterior_image,
+    interior_image
+  } = req.body;
+
+  try {
+    const result = await pool.query(
+      `UPDATE vendors SET 
+        name = $1, 
+        contact_number = $2, 
+        state = $3, 
+        city = $4, 
+        pincode = $5, 
+        full_address = $6, 
+        service_type = $7, 
+        years_of_experience = $8, 
+        personal_intro = $9, 
+        exterior_image = $10,
+        interior_image = $11
+      WHERE id = $12 
+      RETURNING id, name, contact_number, state, city, pincode, full_address, service_type, years_of_experience, personal_intro, exterior_image, interior_image`,
+      [
+        name,
+        contact_number,
+        state,
+        city,
+        pincode,
+        full_address,
+        service_type,
+        years_of_experience,
+        personal_intro,
+        exterior_image,
+        interior_image,
+        vendorId,
+      ]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Vendor not found" });
+    }
+
+    res.json({ message: "Vendor details updated successfully", vendor: result.rows[0] });
+  } catch (err) {
+    console.error("Error updating vendor details by admin:", err);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
 
 const loginVendor = async (req, res) => {
   try {
