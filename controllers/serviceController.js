@@ -47,26 +47,62 @@ const addVendorServices = async (req, res) => {
 
 
 // Get Vendor Services by Email
-const getVendorServicesByEmail = async (req, res) => {
-    const { email } = req.body;
+// const getVendorServicesByEmail = async (req, res) => {
+//     const { email } = req.body;
 
-    if (!email) {
-        return res.status(400).json({ error: "Email is required" });
+//     if (!email) {
+//         return res.status(400).json({ error: "Email is required" });
+//     }
+
+//     try {
+//         const result = await pool.query(
+//             "SELECT service_name, service_price FROM vendor_services WHERE email = $1",
+//             [email]
+//         );
+
+//         if (result.rows.length === 0) {
+//             return res.status(404).json({ message: "No services found for this email" });
+//         }
+
+//         return res.status(200).json({
+//             vendor_email: email,
+//             services: result.rows // Now each service object does not contain 'email'
+//         });
+
+//     } catch (error) {
+//         console.error("Error fetching services:", error);
+//         return res.status(500).json({ error: "Internal Server Error" });
+//     }
+// };
+
+const getVendorServicesByEmail = async (req, res) => {
+    const { id, email } = req.body;
+
+    if (!id && !email) {
+        return res.status(400).json({ error: "Either vendor ID or email is required" });
     }
 
     try {
-        const result = await pool.query(
-            "SELECT service_name, service_price FROM vendor_services WHERE email = $1",
-            [email]
-        );
+        let query = "";
+        let queryParams = [];
+
+        if (id) {
+            query = "SELECT service_name, service_price FROM vendor_services WHERE vendor_id = $1";
+            queryParams = [id];
+        } else {
+            query = "SELECT service_name, service_price FROM vendor_services WHERE email = $1";
+            queryParams = [email];
+        }
+
+        const result = await pool.query(query, queryParams);
 
         if (result.rows.length === 0) {
-            return res.status(404).json({ message: "No services found for this email" });
+            return res.status(404).json({ message: "No services found for the given vendor" });
         }
 
         return res.status(200).json({
-            vendor_email: email,
-            services: result.rows // Now each service object does not contain 'email'
+            vendor_identifier: id || email, // Return ID if provided, otherwise email
+            services: result.rows
         });
 
     } catch (error) {
@@ -76,44 +112,8 @@ const getVendorServicesByEmail = async (req, res) => {
 };
 
 
-// const deleteVendorService = async (req, res) => {
-//     const { email, service_name } = req.body;
 
-//     if (!email || !service_name) {
-//         return res.status(400).json({ error: "Email and service name are required" });
-//     }
 
-//     try {
-//         // Normalize input for better matching
-//         const normalizedEmail = email.trim().toLowerCase();
-//         const normalizedServiceName = service_name.trim().toLowerCase();
-
-      
-
-//         // Check if the service exists
-//         const existingService = await pool.query(
-//             "SELECT id FROM vendor_services WHERE LOWER(email) = $1 AND LOWER(service_name) = $2",
-//             [normalizedEmail, normalizedServiceName]
-//         );
-
-//         if (existingService.rows.length === 0) {
-//             console.log(`Service not found: email=${normalizedEmail}, service=${normalizedServiceName}`);
-//             return res.status(404).json({ error: "Service not found for this vendor" });
-//         }
-
-//         // Delete the service
-//         await pool.query(
-//             "DELETE FROM vendor_services WHERE LOWER(email) = $1 AND LOWER(service_name) = $2",
-//             [normalizedEmail, normalizedServiceName]
-//         );
-
-//         return res.status(200).json({ message: `Service '${service_name}' deleted successfully` });
-
-//     } catch (error) {
-//         console.error("Error deleting service:", error);
-//         return res.status(500).json({ error: "Internal Server Error" });
-//     }
-// };
 
 const deleteVendorService = async (req, res) => {
     const { email, service_name } = req.body;
