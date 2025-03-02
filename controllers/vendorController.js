@@ -1,5 +1,6 @@
 const bcrypt = require("bcrypt");
 const pool = require("../config/db");
+const axios = require("axios");
 
 const registerVendor = async (req, res) => {
   try {
@@ -227,11 +228,38 @@ const loginVendor = async (req, res) => {
   }
 };
 
+const getAddressByPincode = async (req, res) => {
+  try {
+      const { pincode } = req.query;
+
+      if (!pincode) {
+          return res.status(400).json({ error: "Pincode is required" });
+      }
+
+      const response = await axios.get(
+          `https://nominatim.openstreetmap.org/search`,
+          {
+              params: {
+                  postalcode: pincode,
+                  countrycodes: "IN", // Change if needed
+                  format: "json"
+              }
+          }
+      );
+
+      if (!response.data || response.data.length === 0) {
+          return res.status(404).json({ error: "Address not found" });
+      }
+
+      res.json(response.data);
+  } catch (error) {
+      console.error("Error fetching address:", error.message); // Logs error in the console
+      res.status(500).json({ error: "Internal Server Error", details: error.message });
+  }
+};
 
 
 
 
-
-
-module.exports = { registerVendor,getVendorById , getAllVendors,approveVendor,rejectVendor, updateVendorDetails, loginVendor};
+module.exports = { registerVendor,getVendorById , getAllVendors,approveVendor,rejectVendor, updateVendorDetails, loginVendor,getAddressByPincode };
 
