@@ -1,7 +1,4 @@
 
-
-
-
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
@@ -11,6 +8,7 @@ const pool = require("./config/db"); // PostgreSQL connection
 const router = require("./routes/vendorRoutes");
 const uresRouter = require("./routes/userRoutes");
 const serviceRouter = require("./routes/serviceRoutes");
+const paymentRoutes = require("./routes/paymentRoutes");
 
 // Initialize Express app
 const app = express();
@@ -35,7 +33,13 @@ app.use("/api/users", uresRouter);
 
 app.use("/api",serviceRouter);
 
+
+// payment router 
+app.use('/api/payment', paymentRoutes);
+
 // Start the server
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
 });
+
+
