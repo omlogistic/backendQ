@@ -1,13 +1,17 @@
 
 
-
+require('dotenv').config();
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 
 // Razorpay Config
+// const razorpay = new Razorpay({
+//     key_id: 'rzp_live_CW3A67eVfhqgaj', 
+//     key_secret: 'abe9tGk6Tp68RV9Rd3vHN3MC' 
+// });
 const razorpay = new Razorpay({
-    key_id: 'rzp_live_CW3A67eVfhqgaj', // Replace with your key_id
-    key_secret: 'abe9tGk6Tp68RV9Rd3vHN3MC' // Replace with your key_secret
+    key_id: process.env.RAZORPAY_KEY_ID, 
+    key_secret: process.env.RAZORPAY_KEY_SECRET
 });
 
 // ➡️ Create Order
