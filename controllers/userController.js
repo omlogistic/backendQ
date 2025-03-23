@@ -305,5 +305,89 @@ const getUserByEmail = async (req, res) => {
   }
 };
 
-module.exports = { sendOtpAndCheckEmail, verifyOtpAndSignup, loginUser, getUserByEmail };
+
+const forgotPasswordRequest = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    // Check if user exists
+    const user = await pool.query("SELECT * FROM userquery WHERE email = $1", [email]);
+    if (user.rows.length === 0) {
+      return res.status(400).json({ message: "Email not found" });
+    }
+
+    // Generate 6-digit numeric OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // OTP expires in 5 mins
+
+    // Store OTP in database
+    await pool.query(
+      `INSERT INTO otp_verifications (email, otp, expires_at) 
+       VALUES ($1, $2, $3) 
+       ON CONFLICT (email) DO UPDATE 
+       SET otp = EXCLUDED.otp, expires_at = EXCLUDED.expires_at`,
+      [email, otp, expiresAt]
+    );
+
+    // Send OTP via Email
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: "Password Reset OTP",
+      text: `Your OTP to reset your password is: ${otp}. It is valid for 5 minutes.`,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res.status(200).json({ message: "OTP sent successfully!" });
+  } catch (error) {
+    console.error("Error in forgot password request:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// ✅ 2️⃣ Verify OTP and Reset Password
+const resetPassword = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ message: "Email, OTP, and new password are required" });
+    }
+
+    // Fetch OTP from the database
+    const otpRecord = await pool.query("SELECT * FROM otp_verifications WHERE email = $1 AND otp = $2", [email, otp]);
+
+    if (otpRecord.rows.length === 0) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    const { expires_at } = otpRecord.rows[0];
+
+    // Check if OTP is expired
+    if (new Date() > new Date(expires_at)) {
+      return res.status(400).json({ message: "OTP expired. Request a new one." });
+    }
+
+    // Delete OTP after verification
+    await pool.query("DELETE FROM otp_verifications WHERE email = $1", [email]);
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update user password in database
+    await pool.query("UPDATE userquery SET password = $1 WHERE email = $2", [hashedPassword, email]);
+
+    res.status(200).json({ message: "Password reset successful!" });
+  } catch (error) {
+    console.error("Error resetting password:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+module.exports = { sendOtpAndCheckEmail, verifyOtpAndSignup, loginUser, getUserByEmail , forgotPasswordRequest, resetPassword };
 
