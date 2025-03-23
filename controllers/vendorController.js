@@ -1,8 +1,83 @@
 const bcrypt = require("bcrypt");
 const pool = require("../config/db");
 const axios = require("axios");
+const nodemailer = require("nodemailer");
+const otpGenerator = require("otp-generator");
 
-const registerVendor = async (req, res) => {
+// const registerVendor = async (req, res) => {
+//   try {
+//     const {
+//       name,
+//       enterprise_name,
+//       email,
+//       contact_number,
+//       state,
+//       city,
+//       pincode,
+//       full_address,
+//       service_type,
+//       years_of_experience,
+//       personal_intro,
+//       password,
+//       exterior_image,
+//       interior_image,
+//     } = req.body;
+
+//     const exteriorImageUrl = exterior_image ? String(exterior_image) : null;
+//     const interiorImageUrl = interior_image ? String(interior_image) : null;
+//     const hashedPassword = await bcrypt.hash(password, 10);
+
+//     // Insert into database
+//     const result = await pool.query(
+//       `INSERT INTO vendors (
+//         name, enterprise_name, email, contact_number, state, city, pincode, 
+//         full_address, service_type, exterior_image, interior_image, years_of_experience, 
+//         personal_intro, password, status
+//       ) 
+//       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) 
+//       RETURNING *`,
+//       [
+//         name,
+//         enterprise_name,
+//         email,
+//         contact_number,
+//         state,
+//         city,
+//         pincode,
+//         full_address,
+//         service_type,
+//         exteriorImageUrl,
+//         interiorImageUrl,
+//         years_of_experience,
+//         personal_intro,
+//         hashedPassword,
+//         'pending'  // Default status
+//       ]
+//     );
+
+//     res.status(201).json({
+//       message: "Vendor registered successfully, awaiting admin approval.",
+//       vendor: result.rows[0],
+//     });
+//   } catch (error) {
+//     console.error("Error registering vendor:", error);
+//     res.status(500).json({ message: "Server error", error: error.message });
+//   }
+// };
+
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
+// 🔹 Temporary storage for vendor details (or use Redis for better scalability)
+const pendingVendors = new Map();
+
+// ✅ 1️⃣ Submit Vendor Details & Send OTP
+const submitVendorDetails = async (req, res) => {
   try {
     const {
       name,
@@ -21,11 +96,99 @@ const registerVendor = async (req, res) => {
       interior_image,
     } = req.body;
 
-    const exteriorImageUrl = exterior_image ? String(exterior_image) : null;
-    const interiorImageUrl = interior_image ? String(interior_image) : null;
-    const hashedPassword = await bcrypt.hash(password, 10);
+    if (!email || !name || !password || !enterprise_name) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
 
-    // Insert into database
+    // Check if email is already registered
+    const userExists = await pool.query("SELECT * FROM vendors WHERE email = $1", [email]);
+    if (userExists.rows.length > 0) {
+      return res.status(400).json({ message: "Email already registered" });
+    }
+
+    // Generate 6-digit numeric OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // OTP expires in 5 minutes
+
+    // Store OTP in the database
+    await pool.query(
+      `INSERT INTO otp_verifications (email, otp, expires_at) 
+       VALUES ($1, $2, $3) 
+       ON CONFLICT (email) DO UPDATE 
+       SET otp = EXCLUDED.otp, expires_at = EXCLUDED.expires_at`,
+      [email, otp, expiresAt]
+    );
+
+    // Store vendor details in temporary storage
+    pendingVendors.set(email, {
+      name,
+      enterprise_name,
+      contact_number,
+      state,
+      city,
+      pincode,
+      full_address,
+      service_type,
+      years_of_experience,
+      personal_intro,
+      password,
+      exterior_image,
+      interior_image,
+    });
+
+    // Send OTP email
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: "Vendor Registration OTP",
+      text: `Your OTP for vendor registration is: ${otp}. It is valid for 5 minutes.`,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res.status(200).json({ message: "OTP sent successfully! Please verify to complete registration." });
+  } catch (error) {
+    console.error("Error submitting vendor details:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// ✅ 2️⃣ Verify OTP & Register Vendor
+const verifyOtpAndRegisterVendor = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({ message: "Email and OTP are required" });
+    }
+
+    // Fetch OTP from the database
+    const otpRecord = await pool.query("SELECT * FROM otp_verifications WHERE email = $1 AND otp = $2", [email, otp]);
+
+    if (otpRecord.rows.length === 0) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    const { expires_at } = otpRecord.rows[0];
+
+    // Check if OTP is expired
+    if (new Date() > new Date(expires_at)) {
+      return res.status(400).json({ message: "OTP expired. Request a new one." });
+    }
+
+    // Delete OTP after verification
+    await pool.query("DELETE FROM otp_verifications WHERE email = $1", [email]);
+
+    // Get vendor details from temporary storage
+    const vendorData = pendingVendors.get(email);
+    if (!vendorData) {
+      return res.status(400).json({ message: "No pending registration found for this email." });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(vendorData.password, 10);
+
+    // Insert Vendor into Database
     const result = await pool.query(
       `INSERT INTO vendors (
         name, enterprise_name, email, contact_number, state, city, pincode, 
@@ -35,30 +198,33 @@ const registerVendor = async (req, res) => {
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) 
       RETURNING *`,
       [
-        name,
-        enterprise_name,
+        vendorData.name,
+        vendorData.enterprise_name,
         email,
-        contact_number,
-        state,
-        city,
-        pincode,
-        full_address,
-        service_type,
-        exteriorImageUrl,
-        interiorImageUrl,
-        years_of_experience,
-        personal_intro,
+        vendorData.contact_number,
+        vendorData.state,
+        vendorData.city,
+        vendorData.pincode,
+        vendorData.full_address,
+        vendorData.service_type,
+        vendorData.exterior_image || null,
+        vendorData.interior_image || null,
+        vendorData.years_of_experience,
+        vendorData.personal_intro,
         hashedPassword,
-        'pending'  // Default status
+        'pending', // Default status: waiting for admin approval
       ]
     );
+
+    // Remove vendor from temporary storage
+    pendingVendors.delete(email);
 
     res.status(201).json({
       message: "Vendor registered successfully, awaiting admin approval.",
       vendor: result.rows[0],
     });
   } catch (error) {
-    console.error("Error registering vendor:", error);
+    console.error("Error verifying OTP and registering vendor:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
@@ -261,5 +427,179 @@ const getAddressByPincode = async (req, res) => {
 
 
 
-module.exports = { registerVendor,getVendorById , getAllVendors,approveVendor,rejectVendor, updateVendorDetails, loginVendor,getAddressByPincode };
+module.exports = {  submitVendorDetails, verifyOtpAndRegisterVendor ,getVendorById , getAllVendors,approveVendor,rejectVendor, updateVendorDetails, loginVendor,getAddressByPincode };
+
+
+
+// const bcrypt = require("bcrypt");
+// const pool = require("../config/db");
+// const nodemailer = require("nodemailer");
+// const otpGenerator = require("otp-generator");
+
+// // 🔹 Nodemailer transporter setup
+// const transporter = nodemailer.createTransport({
+//   service: "gmail",
+//   auth: {
+//     user: process.env.EMAIL_USER,
+//     pass: process.env.EMAIL_PASS,
+//   },
+// });
+
+// // 🔹 Temporary storage for vendor details (or use Redis for better scalability)
+// const pendingVendors = new Map();
+
+// // ✅ 1️⃣ Submit Vendor Details & Send OTP
+// const submitVendorDetails = async (req, res) => {
+//   try {
+//     const {
+//       name,
+//       enterprise_name,
+//       email,
+//       contact_number,
+//       state,
+//       city,
+//       pincode,
+//       full_address,
+//       service_type,
+//       years_of_experience,
+//       personal_intro,
+//       password,
+//       exterior_image,
+//       interior_image,
+//     } = req.body;
+
+//     if (!email || !name || !password || !enterprise_name) {
+//       return res.status(400).json({ message: "All fields are required" });
+//     }
+
+//     // Check if email is already registered
+//     const userExists = await pool.query("SELECT * FROM vendors WHERE email = $1", [email]);
+//     if (userExists.rows.length > 0) {
+//       return res.status(400).json({ message: "Email already registered" });
+//     }
+
+//     // Generate 6-digit numeric OTP
+//     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+//     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // OTP expires in 5 minutes
+
+//     // Store OTP in the database
+//     await pool.query(
+//       `INSERT INTO otp_verifications (email, otp, expires_at) 
+//        VALUES ($1, $2, $3) 
+//        ON CONFLICT (email) DO UPDATE 
+//        SET otp = EXCLUDED.otp, expires_at = EXCLUDED.expires_at`,
+//       [email, otp, expiresAt]
+//     );
+
+//     // Store vendor details in temporary storage
+//     pendingVendors.set(email, {
+//       name,
+//       enterprise_name,
+//       contact_number,
+//       state,
+//       city,
+//       pincode,
+//       full_address,
+//       service_type,
+//       years_of_experience,
+//       personal_intro,
+//       password,
+//       exterior_image,
+//       interior_image,
+//     });
+
+//     // Send OTP email
+//     const mailOptions = {
+//       from: process.env.EMAIL_USER,
+//       to: email,
+//       subject: "Vendor Registration OTP",
+//       text: `Your OTP for vendor registration is: ${otp}. It is valid for 5 minutes.`,
+//     };
+
+//     await transporter.sendMail(mailOptions);
+
+//     res.status(200).json({ message: "OTP sent successfully! Please verify to complete registration." });
+//   } catch (error) {
+//     console.error("Error submitting vendor details:", error);
+//     res.status(500).json({ message: "Server error", error: error.message });
+//   }
+// };
+
+// // ✅ 2️⃣ Verify OTP & Register Vendor
+// const verifyOtpAndRegisterVendor = async (req, res) => {
+//   try {
+//     const { email, otp } = req.body;
+
+//     if (!email || !otp) {
+//       return res.status(400).json({ message: "Email and OTP are required" });
+//     }
+
+//     // Fetch OTP from the database
+//     const otpRecord = await pool.query("SELECT * FROM otp_verifications WHERE email = $1 AND otp = $2", [email, otp]);
+
+//     if (otpRecord.rows.length === 0) {
+//       return res.status(400).json({ message: "Invalid OTP" });
+//     }
+
+//     const { expires_at } = otpRecord.rows[0];
+
+//     // Check if OTP is expired
+//     if (new Date() > new Date(expires_at)) {
+//       return res.status(400).json({ message: "OTP expired. Request a new one." });
+//     }
+
+//     // Delete OTP after verification
+//     await pool.query("DELETE FROM otp_verifications WHERE email = $1", [email]);
+
+//     // Get vendor details from temporary storage
+//     const vendorData = pendingVendors.get(email);
+//     if (!vendorData) {
+//       return res.status(400).json({ message: "No pending registration found for this email." });
+//     }
+
+//     // Hash password
+//     const hashedPassword = await bcrypt.hash(vendorData.password, 10);
+
+//     // Insert Vendor into Database
+//     const result = await pool.query(
+//       `INSERT INTO vendors (
+//         name, enterprise_name, email, contact_number, state, city, pincode, 
+//         full_address, service_type, exterior_image, interior_image, years_of_experience, 
+//         personal_intro, password, status
+//       ) 
+//       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) 
+//       RETURNING *`,
+//       [
+//         vendorData.name,
+//         vendorData.enterprise_name,
+//         email,
+//         vendorData.contact_number,
+//         vendorData.state,
+//         vendorData.city,
+//         vendorData.pincode,
+//         vendorData.full_address,
+//         vendorData.service_type,
+//         vendorData.exterior_image || null,
+//         vendorData.interior_image || null,
+//         vendorData.years_of_experience,
+//         vendorData.personal_intro,
+//         hashedPassword,
+//         'pending', // Default status: waiting for admin approval
+//       ]
+//     );
+
+//     // Remove vendor from temporary storage
+//     pendingVendors.delete(email);
+
+//     res.status(201).json({
+//       message: "Vendor registered successfully, awaiting admin approval.",
+//       vendor: result.rows[0],
+//     });
+//   } catch (error) {
+//     console.error("Error verifying OTP and registering vendor:", error);
+//     res.status(500).json({ message: "Server error", error: error.message });
+//   }
+// };
+
+// module.exports = { submitVendorDetails, verifyOtpAndRegisterVendor };
 

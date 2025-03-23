@@ -3,13 +3,15 @@
 
 
 const express = require("express");
-const { registerVendor, getAllVendors, approveVendor, rejectVendor, updateVendorDetails, getVendorById, loginVendor, getAddressByPincode } = require("../controllers/vendorController");
+const { submitVendorDetails,  verifyOtpAndRegisterVendor, getAllVendors, approveVendor, rejectVendor, updateVendorDetails, getVendorById, loginVendor, getAddressByPincode } = require("../controllers/vendorController");
 
 
 const router = express.Router();
 
 // Register Vendor (expects image URLs in request body)
-router.post("/register", registerVendor);
+// router.post("/register", registerVendor);
+router.post("/vendor/register", submitVendorDetails); // Step 1: Submit details & get OTP
+router.post("/vendor/verify-otp", verifyOtpAndRegisterVendor);
 
 router.post("/admin/login", loginVendor);
 
@@ -32,3 +34,19 @@ router.get('/vendors/:id', getVendorById);
 router.get("/address", getAddressByPincode);
 
 module.exports = router;
+
+
+
+
+
+
+// const express = require("express");
+// const { submitVendorDetails, verifyOtpAndRegisterVendor } = require("../controllers/vendorController");
+
+
+// const router = express.Router();
+
+// router.post("/vendor/register", submitVendorDetails); // Step 1: Submit details & get OTP
+// router.post("/vendor/verify-otp", verifyOtpAndRegisterVendor);
+
+// module.exports = router;
