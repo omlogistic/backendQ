@@ -343,28 +343,89 @@ const updateVendorDetails = async (req, res) => {
   }
 };
 
+// const loginVendor = async (req, res) => {
+//   try {
+//     const { email, password } = req.body;
+
+//     // Check if email and password are provided
+//     if (!email || !password) {
+//       return res.status(400).json({ message: "Email and password are required." });
+//     }
+
+//     // Check if the vendor exists
+//     const result = await pool.query(
+//       `SELECT id, name, enterprise_name, email, password, status FROM vendors WHERE email = $1`,
+//       [email]
+//     );
+
+//     if (result.rows.length === 0) {
+//       return res.status(404).json({ message: "Vendor not found." });
+//     }
+
+//     const vendor = result.rows[0];
+
+//     // Check password
+//     const isMatch = await bcrypt.compare(password, vendor.password);
+//     if (!isMatch) {
+//       return res.status(401).json({ message: "Invalid credentials." });
+//     }
+
+//     // Check if vendor is approved
+//     if (vendor.status !== 'approved') {
+//       return res.status(403).json({ message: "Account is not approved by admin." });
+//     }
+
+//     // Construct the response data
+//     const vendorData = {
+//       id: vendor.id,
+//       name: vendor.name,
+//       enterprise_name: vendor.enterprise_name,
+//       email: vendor.email,
+//       status: vendor.status
+//     };
+
+//     res.status(200).json({
+//       message: "Login successful.",
+//       vendor: vendorData
+//     });
+//   } catch (error) {
+//     console.error("Error logging in vendor:", error);
+//     res.status(500).json({ message: "Server error", error: error.message });
+//   }
+// };
+
+
 const loginVendor = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, contact_number, password } = req.body;
 
-    // Check if email and password are provided
-    if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required." });
+    // Ensure at least email or contact_number is provided
+    if ((!email && !contact_number) || !password) {
+      return res.status(400).json({ message: "Email/Phone and password are required." });
     }
 
-    // Check if the vendor exists
-    const result = await pool.query(
-      `SELECT id, name, enterprise_name, email, password, status FROM vendors WHERE email = $1`,
-      [email]
-    );
+    // Define the query based on input
+    let query = `SELECT id, name, enterprise_name, email, contact_number, password, status FROM vendors WHERE `;
+    let queryParams = [];
 
+    if (email) {
+      query += `email = $1`;
+      queryParams.push(email);
+    } else if (contact_number) {
+      query += `contact_number = $1`;
+      queryParams.push(contact_number);
+    }
+
+    const result = await pool.query(query, queryParams);
+
+    // Check if vendor exists
     if (result.rows.length === 0) {
       return res.status(404).json({ message: "Vendor not found." });
     }
 
     const vendor = result.rows[0];
 
-    // Check password
+    // Verify password
     const isMatch = await bcrypt.compare(password, vendor.password);
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials." });
@@ -375,12 +436,13 @@ const loginVendor = async (req, res) => {
       return res.status(403).json({ message: "Account is not approved by admin." });
     }
 
-    // Construct the response data
+    // Construct response
     const vendorData = {
       id: vendor.id,
       name: vendor.name,
       enterprise_name: vendor.enterprise_name,
       email: vendor.email,
+      contact_number: vendor.contact_number,
       status: vendor.status
     };
 
