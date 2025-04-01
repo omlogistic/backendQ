@@ -256,35 +256,86 @@ const verifyOtpAndSignup = async (req, res) => {
 };
 
 // 📌 User Login
+// const loginUser = async (req, res) => {
+//   try {
+//     const { email, password } = req.body;
+
+//     if (!email || !password) {
+//       return res.status(400).json({ message: "Email and password are required" });
+//     }
+
+//     // Check if user exists
+//     const user = await pool.query("SELECT * FROM userquery WHERE email = $1", [email]);
+//     if (user.rows.length === 0) {
+//       return res.status(400).json({ message: "Invalid email or password" });
+//     }
+
+//     // Validate password
+//     const validPassword = await bcrypt.compare(password, user.rows[0].password);
+//     if (!validPassword) {
+//       return res.status(400).json({ message: "Invalid email or password" });
+//     }
+
+//     res.json({
+//       message: "Login successful",
+//       user: { id: user.rows[0].id, email: user.rows[0].email, name: user.rows[0].name },
+//     });
+//   } catch (error) {
+//     console.error("Error logging in:", error);
+//     res.status(500).json({ message: "Server error", error: error.message });
+//   }
+// };
+
 const loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, mobile_number, password } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required" });
+    // Ensure at least email or mobile_number is provided
+    if ((!email && !mobile_number) || !password) {
+      return res.status(400).json({ message: "Email/Phone and password are required" });
     }
 
+    // Construct query based on input
+    let query = "SELECT * FROM userquery WHERE ";
+    let queryParams = [];
+
+    if (email) {
+      query += "email = $1";
+      queryParams.push(email);
+    } else if (mobile_number) {
+      query += "mobile_number = $1";
+      queryParams.push(mobile_number);
+    }
+
+    const user = await pool.query(query, queryParams);
+
     // Check if user exists
-    const user = await pool.query("SELECT * FROM userquery WHERE email = $1", [email]);
     if (user.rows.length === 0) {
-      return res.status(400).json({ message: "Invalid email or password" });
+      return res.status(400).json({ message: "Invalid email/phone or password" });
     }
 
     // Validate password
     const validPassword = await bcrypt.compare(password, user.rows[0].password);
     if (!validPassword) {
-      return res.status(400).json({ message: "Invalid email or password" });
+      return res.status(400).json({ message: "Invalid email/phone or password" });
     }
 
+    // Respond with user data
     res.json({
       message: "Login successful",
-      user: { id: user.rows[0].id, email: user.rows[0].email, name: user.rows[0].name },
+      user: {
+        id: user.rows[0].id,
+        email: user.rows[0].email,
+        mobile_number: user.rows[0].mobile_number,
+        name: user.rows[0].name,
+      },
     });
   } catch (error) {
     console.error("Error logging in:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 // 📌 Get User by Email
 const getUserByEmail = async (req, res) => {
