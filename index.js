@@ -9,6 +9,7 @@ const router = require("./routes/vendorRoutes");
 const uresRouter = require("./routes/userRoutes");
 const serviceRouter = require("./routes/serviceRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
+const notificationRouter = require("./routes/notificationRouter");
 
 // Initialize Express app
 const app = express();
@@ -36,6 +37,10 @@ app.use("/api",serviceRouter);
 
 // payment router 
 app.use('/api/payment', paymentRoutes);
+
+// notification router
+
+app.use('/api', notificationRouter);
 
 // Start the server
 app.listen(port, () => {
