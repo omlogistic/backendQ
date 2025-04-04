@@ -1,37 +1,3 @@
-// const nodemailer = require("nodemailer");
-
-// const sendBookingEmail = async (req, res) => {
-//     const { name, email } = req.body;
-
-//     if (!name || !email) {
-//         return res.status(400).json({ error: "Name and email are required." });
-//     }
-
-//     const transporter = nodemailer.createTransport({
-//         service: "gmail",
-//         auth: {
-//             user: process.env.EMAIL_USER,
-//             pass: process.env.EMAIL_PASS,
-//         },
-//     });
-
-//     const mailOptions = {
-//         from: process.env.EMAIL_USER,
-//         to: email,
-//         subject: "Booking Confirmation",
-//         text: `Hello ${name},\n\nYour booking has been confirmed!\n\nThank you for choosing us.`,
-//     };
-
-//     try {
-//         await transporter.sendMail(mailOptions);
-//         res.status(200).json({ message: "Booking confirmation email sent!" });
-//     } catch (error) {
-//         console.error("Error sending email:", error);
-//         res.status(500).json({ error: "Error sending email" });
-//     }
-// };
-
-// module.exports = { sendBookingEmail };
 
 
 const nodemailer = require("nodemailer");

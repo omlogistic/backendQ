@@ -10,6 +10,7 @@ const uresRouter = require("./routes/userRoutes");
 const serviceRouter = require("./routes/serviceRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 const notificationRouter = require("./routes/notificationRouter");
+const bookingRouter = require("./routes/bookingRouter");
 
 // Initialize Express app
 const app = express();
@@ -41,6 +42,10 @@ app.use('/api/payment', paymentRoutes);
 // notification router
 
 app.use('/api', notificationRouter);
+
+// booking router
+
+app.use('/api', bookingRouter);
 
 // Start the server
 app.listen(port, () => {
