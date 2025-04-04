@@ -3,7 +3,7 @@ const { BookingDetails, getAllBookings, getBookingById, getBookingsBySalonId, de
 const bookingRouter = express.Router();
 
 
-bookingRouter.post("/bookings", BookingDetails);
+bookingRouter.post("/bookings-details", BookingDetails);
 bookingRouter.get("/bookings", getAllBookings);
 bookingRouter.get("/bookings/:id", getBookingById);
 bookingRouter.get("/bookings/salon/:salonId", getBookingsBySalonId);
