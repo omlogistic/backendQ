@@ -405,7 +405,7 @@ const loginVendor = async (req, res) => {
     }
 
     // Define the query based on input
-    let query = `SELECT id, name, enterprise_name, email, contact_number, password, status FROM vendors WHERE `;
+    let query = `SELECT id, name, enterprise_name, email, contact_number, password, status ,service_type FROM vendors WHERE `;
     let queryParams = [];
 
     if (email) {
@@ -443,7 +443,8 @@ const loginVendor = async (req, res) => {
       enterprise_name: vendor.enterprise_name,
       email: vendor.email,
       contact_number: vendor.contact_number,
-      status: vendor.status
+      status: vendor.status,
+      service_type: vendor.service_type
     };
 
     res.status(200).json({
