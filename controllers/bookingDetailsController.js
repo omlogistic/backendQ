@@ -92,4 +92,33 @@ const deleteBooking = async (req, res) => {
     }
 };
 
-module.exports = { BookingDetails, getAllBookings, getBookingById, getBookingsBySalonId, deleteBooking };
+const DoctorBookingDetails = async (req, res) => {
+    try {
+        const {
+            name,
+            email,
+            doctorId,
+            doctorName,
+            date,
+            time,
+            paymentMethod,
+            totalAmount,
+            services
+        } = req.body;
+
+        const query = `
+            INSERT INTO docdorbookings (name, email, doctor_id, doctor_name, date, time, payment_method, total_amount, services)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *;
+        `;
+
+        const values = [name, email, doctorId, doctorName, date, time, paymentMethod, totalAmount, JSON.stringify(services)];
+        const { rows } = await pool.query(query, values);
+
+        res.status(201).json({ message: "Booking successful", booking: rows[0] });
+    } catch (error) {
+        console.error("Error creating booking:", error);
+        res.status(500).json({ message: "Server error", error });
+    }
+};
+
+module.exports = { BookingDetails, getAllBookings, getBookingById, getBookingsBySalonId, deleteBooking, DoctorBookingDetails };
