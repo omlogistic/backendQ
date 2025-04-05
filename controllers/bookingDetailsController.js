@@ -114,7 +114,7 @@ const DoctorBookingDetails = async (req, res) => {
         const values = [name, email, doctorId, doctorName, date, time, paymentMethod, totalAmount, JSON.stringify(services)];
         const { rows } = await pool.query(query, values);
 
-        res.status(201).json({ message: "Booking successful", booking: rows[0] });
+        res.status(201).json({ message: "Booking successful", docdorbookings: rows[0] });
     } catch (error) {
         console.error("Error creating booking:", error);
         res.status(500).json({ message: "Server error", error });
