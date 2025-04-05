@@ -92,7 +92,7 @@ const deleteBooking = async (req, res) => {
     }
 };
 
-const DoctorBookingDetails = async (req, res) => {
+const createDoctorBooking = async (req, res) => {
     try {
         const {
             name,
@@ -107,18 +107,52 @@ const DoctorBookingDetails = async (req, res) => {
         } = req.body;
 
         const query = `
-            INSERT INTO docdorbookings (name, email, doctor_id, doctor_name, date, time, payment_method, total_amount, services)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *;
+            INSERT INTO doctorbookings 
+            (name, email, doctor_id, doctor_name, date, time, payment_method, total_amount, services)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            RETURNING *;
         `;
 
-        const values = [name, email, doctorId, doctorName, date, time, paymentMethod, totalAmount, JSON.stringify(services)];
+        const values = [
+            name,
+            email,
+            doctorId,
+            doctorName,
+            date,
+            time,
+            paymentMethod,
+            totalAmount,
+            JSON.stringify(services)
+        ];
+
         const { rows } = await pool.query(query, values);
 
-        res.status(201).json({ message: "Booking successful", docdorbookings: rows[0] });
+        res.status(201).json({ message: "Booking successful", booking: rows[0] });
     } catch (error) {
-        console.error("Error creating booking:", error);
+        console.error("Error creating doctor booking:", error);
         res.status(500).json({ message: "Server error", error });
     }
 };
 
-module.exports = { BookingDetails, getAllBookings, getBookingById, getBookingsBySalonId, deleteBooking, DoctorBookingDetails };
+const getBookingsByDoctorId = async (req, res) => {
+    try {
+        const { doctorId } = req.params;
+
+        const query = `
+            SELECT * FROM doctorbookings WHERE doctor_id = $1 ORDER BY date, time;
+        `;
+
+        const { rows } = await pool.query(query, [doctorId]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ message: "No bookings found for this doctor" });
+        }
+
+        res.status(200).json({ bookings: rows });
+    } catch (error) {
+        console.error("Error fetching doctor bookings:", error);
+        res.status(500).json({ message: "Server error", error });
+    }
+};
+
+module.exports = { BookingDetails, getAllBookings, getBookingById, getBookingsBySalonId, deleteBooking, createDoctorBooking ,getBookingsByDoctorId };
