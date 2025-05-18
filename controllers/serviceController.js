@@ -46,34 +46,68 @@ const addVendorServices = async (req, res) => {
 };
 
 
-// Get Vendor Services by Email
-// const getVendorServicesByEmail = async (req, res) => {
-//     const { email } = req.body;
 
-//     if (!email) {
-//         return res.status(400).json({ error: "Email is required" });
-//     }
+const addSubcategory = async (req, res) => {
+    const { vendor_id, email, subcategory } = req.body;
 
-//     try {
-//         const result = await pool.query(
-//             "SELECT service_name, service_price FROM vendor_services WHERE email = $1",
-//             [email]
-//         );
+    if (!vendor_id || !email || !subcategory) {
+        return res.status(400).json({ error: "Vendor ID, email, and subcategory are required" });
+    }
 
-//         if (result.rows.length === 0) {
-//             return res.status(404).json({ message: "No services found for this email" });
-//         }
+    try {
+        await pool.query("BEGIN");
 
-//         return res.status(200).json({
-//             vendor_email: email,
-//             services: result.rows // Now each service object does not contain 'email'
-//         });
+        const existingSubcategory = await pool.query(
+            "SELECT id FROM subcategories WHERE vendor_id = $1 AND subcategory_name = $2",
+            [vendor_id, subcategory]
+        );
 
-//     } catch (error) {
-//         console.error("Error fetching services:", error);
-//         return res.status(500).json({ error: "Internal Server Error" });
-//     }
-// };
+        if (existingSubcategory.rows.length > 0) {
+            await pool.query("ROLLBACK");
+            return res.status(400).json({ error: `Subcategory '${subcategory}' already exists for this vendor` });
+        }
+
+        // 👈 Insert vendor_id, email, subcategory_name
+        await pool.query(
+            "INSERT INTO subcategories (vendor_id, email, subcategory_name) VALUES ($1, $2, $3)",
+            [vendor_id, email, subcategory]
+        );
+
+        await pool.query("COMMIT");
+        return res.status(201).json({ message: "Subcategory added successfully" });
+
+    } catch (error) {
+        await pool.query("ROLLBACK");
+        console.error("Error adding subcategory:", error);
+        return res.status(500).json({ error: "Internal Server Error" });
+    }
+};
+
+const getSubcategoriesByEmail = async (req, res) => {
+    const { email } = req.body;
+
+    if (!email) {
+        return res.status(400).json({ error: "Email is required" });
+    }
+
+    try {
+        const result = await pool.query(
+            "SELECT * FROM subcategories WHERE email = $1",
+            [email]
+        );
+
+        return res.status(200).json({ subcategories: result.rows });
+
+    } catch (error) {
+        console.error("Error fetching subcategories:", error);
+        return res.status(500).json({ error: "Internal Server Error" });
+    }
+};
+
+
+
+
+
 
 const getVendorServicesByEmail = async (req, res) => {
     const { id, email } = req.body;
@@ -163,5 +197,5 @@ const deleteVendorService = async (req, res) => {
 
 
 
-module.exports = { addVendorServices, getVendorServicesByEmail , deleteVendorService};
+module.exports = { addVendorServices, getVendorServicesByEmail , deleteVendorService , addSubcategory,getSubcategoriesByEmail};
 
